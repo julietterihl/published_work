@@ -1,0 +1,637 @@
+---
+title: "Deaths of People Experiencing Homelessness in Maricopa County, AZ, 2022"
+author: "Juliette Rihl"
+date: "7/26/23"
+output: 
+  html_document:
+    theme: cerulean
+    toc: true
+    toc_float: true
+    code_download: true
+    df_print: paged
+      
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE,
+                      error = TRUE)
+
+
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(readxl)
+library(dplyr)
+library(reactable)
+library(stringr)
+
+```
+
+## Introduction
+
+This data analysis was completed for a [story](https://www.azcentral.com/story/news/local/phoenix/2023/07/26/hundreds-of-maricopa-county-homeless-population-died-in-2022/69903536007/) on deaths of people experiencing homelessness called "Hundreds of people experiencing homelessness died in Maricopa County last year. Will 2023 be worse?"
+
+It ran on The Arizona Republic's website on July 26, 2023 and on the front page of the Sunday print edition on August 6, 2023.
+
+The data was obtained by email from Lisa Glow, CEO of Central Arizona Shelter Services, on Feb. 8, 2023. It is data from the Maricopa County Office of the Medical Examiner that contains all "transient deaths" in 2022, meaning deaths of people experiencing homelessness. The original data was provided in two spreadsheets: deaths ruled an accident or natural, and deaths ruled a homicide or unknown. I confirmed with Jessie Caraveo, Maricopa County PIO, that this data is correct and was obtained from the Maricopa County Office of the Medical Examiner. Here, I will combine the two data sets and analyze them for a story on deaths of people experiencing homelessness in Maricopa County, Arizona in 2022.
+
+## Key findings
+
+Note: I didn't use all of this analysis in the story. Instead, I explored a number of angles to see which were the most compelling and crucial to include.
+
+-   570 out of 794 deaths were ruled an accident, or about 72%. Only 11% were deemed natural. 36 were homicides and 22 were suicides. 60 have no manner of death listed. Those cases were also not on the ME's website, but were in the data provided to us by CASS/the ME's office. 13 cases are undetermined and 3 are listed as "fetal."
+
+-   Men are overrepresented in the data. Over 80% of decedents were male. According to PIT data, 65% of people experiencing homelessness in the county in early 2022 identified as male.
+
+-   White people are also overrepresented in the data. Almost 3/4 of the deaths were white people. But Hispanic and Latino people were not overrepresented: 19% of the deaths were Hispanic or Latino people. According to Point-in-Time count data, 63% of people experiencing homelessness in the county in early 2022 were white, and about 24% were Hispanic/Latino. (The Point-in-Time count is an annual census of people experiencing homelessness in a given region.)
+
+-   Black people were underrepresented in the data. About 12% of the deaths were Black people. According to Point-in-Time count data, 26% of people experiencing homelessness in the county in early 2022 were Black.
+
+-   However, while only 12% of the overall deaths were Black people, they made up 25% of the homicide victims. That's closer to their percent of overall people experiencing homelessness (26%).
+
+-   Native American and Alaskan Native people were overrepresented. About 11% of the deaths were Native American or Alaska Native people. They made up about 7% of the people in the 2022 Point-in-Time count.
+
+-   The top five zip codes with the most deaths were 85006, 85007, 85013, 85008 and 85009.
+
+-   About 44% of the deaths occurred outside.
+
+-   In just over half of the cases (439/794, or 55%), the primary cause of death involved substance use. Those numbers were 265, or 51%, in 2021; 375, or 63%, in 2020; not listed in 2019 report.
+
+-   In 85 cases, the primary cause of death was heat exposure.
+
+-   In 6 cases, the primary cause of death was COVID-19.
+
+-   In 66 cases, the primary cause of death was blunt force injuries/trauma.
+
+-   People were fatally being struck by a vehicle in at least 62 cases.
+
+-   This year there were 794 deaths of people experiencing homelessness. According to Medical Examiner annual reports, there were 517 deaths in 2021, 596 deaths in 2020, 259 in 2019 and 224 in 2018. There is no data in the annual reports before 2018, though those reports did include the number of unclaimed bodies. This data is a bit more robust than the annual reports, as it includes some cases that the annual reports don't capture, so these numbers shouldn't be directly compared to each other. But they indicate broadly that the deaths are increasing.
+
+-   The zip codes with the most vehicle deaths (not including car crashes) are 85006 and 85013. That could be because those zip codes have hospitals in them.
+
+-   36 deaths were a homicide, or 5%. In 2021, 25/517 medical examiner cases of people experiencing homelessness were homicides, or 5%. In 2020, 21/596 were homicides, or 4%.
+
+-   According to Miguel, there were 428 total homicides in Maricopa County last year. That means 35/425, or 8%, of homicide victims were homeless.
+
+-   July was the deadliest month by far, with more than twice as many deaths as any other month, followed by August and June. July had 44 heat deaths-- almost 3x as many as the next highest month, June (15 deaths).
+
+-   July 13 and July 17 were the deadliest days of 2022 for people experiencing homelessness, with 15 deaths each.
+
+-   The deadliest week of the year was July 16-July 22, with 69 deaths. The week before it had 47 deaths.
+
+## Analysis
+
+```{r}
+# Reading in both datasets.
+
+transient_deaths_accident_og <-
+  read_excel("transient_deaths_desc_22.xlsx")
+
+transient_deaths_homicide_og <-
+  read_excel("transient_deaths_no_desc_22.xlsx")
+
+```
+
+```{r}
+# Deleting the first few rows from the datasets, which don't contain info we need.
+
+transient_deaths_accident_1 = transient_deaths_accident_og[-c(1),] %>% 
+  row_to_names(row_number=1)
+
+transient_deaths_homicide_1 = transient_deaths_homicide_og[-c(1),] %>% 
+    row_to_names(row_number=1)
+```
+
+```{r}
+# Renaming column heads for each dataset.
+
+transient_deaths_accident_1 <- clean_names(transient_deaths_accident_1)
+
+transient_deaths_homicide_1 <- clean_names(transient_deaths_homicide_1)
+
+```
+
+```{r}
+# Adding an "event_description" column and 'sub_manner' column to the transient_deaths_homicide dataframe so both dataframes have all of the same exact columns.
+
+transient_deaths_homicide_1 <- transient_deaths_homicide_1 %>% add_column(event_description="NA", sub_manner="NA")
+
+```
+
+```{r}
+# Binding the datasets. 
+
+transient_deaths_total <- rbind(transient_deaths_accident_1, transient_deaths_homicide_1)
+```
+
+```{r}
+# Checking that the join worked.
+
+glimpse(transient_deaths_total)
+```
+
+```{r}
+# Exporting to Excel.
+
+install.packages("writexl")
+
+library(writexl)
+
+write_xlsx(transient_deaths_total,"/Users/julietterihl/Documents/Data/Data_Arizona_Republic/transient_deaths_total_2022.xlsx")
+```
+
+## Adding scraped data
+
+The medical examiner's office wanted us to separately submit a records request for the primary cause of death. But that information is listed on the medical examiner's website, so former Arizona Republic data reporter Justin Price helped build a scraper that scraped the website instead. Justin already joined the scraped data and the original datasets together into one dataset, so let's load that in:
+
+```{r}
+cod_data_og <- read.csv("/Users/julietterihl/Documents/Data/Data_Arizona_Republic/kunle_scrapeddata_5-12-23.csv")
+```
+
+```{r}
+# Checking to make sure that worked.
+
+glimpse(cod_data_og)
+
+```
+
+```{r}
+# Checking to see if there are any rows where the manner of death from the scraped data doesn't match the manner of death in the dataset provided by the ME. 
+
+cod_data_og %>% filter(manner != MannerOfDeath) %>% 
+  select(decedent_name, manner, MannerOfDeath)
+```
+
+It looks like the data I got from the medical examiner's office had many cases with the manner listed as "pending" that were since resolved and updated on the website. It also looks like there are two cases that had the manner listed as homicide in the medical examiner's original data but nothing listed on the website.
+
+```{r}
+# Checking to see if there are any cases where the person's sex in the original data doesn't match their sex in the scraped website data.
+
+cod_data_og %>% filter(sex != Sex) %>% 
+  select(decedent_name, sex, Sex)
+```
+
+The "Sex" column is empty in a lot of the scraped data. That's probably because there were 90-some rows in the original data that weren't on the website and thus couldn't be scraped.
+
+## Cleaning data
+
+Now that I have everything I need in one dataset, I'll clean it up.
+
+```{r}
+# Making all the blank columns NA.
+
+cod_data_1 <- cod_data_og %>% mutate_all(na_if,"")
+
+# Creating a new manner of death column.
+
+cod_data_1 <- cod_data_1 %>% mutate(manner_of_death = ifelse(is.na(MannerOfDeath), manner, MannerOfDeath))
+
+# Getting rid of duplicative columns and other columns we don't need.
+
+clean_data_1 <- subset(cod_data_1, select = -c(decedent_name, death_date, CaseNum, manner, MannerOfDeath, Sex, ReadyForRelease, MedExReportReady))
+
+# Cleaning column names
+
+clean_data_1 <- clean_names(clean_data_1)
+
+# Getting rid of cases where the person's transient status was marked "unknown," as they weren't confirmed to be homeless.
+
+clean_data_1 <- clean_data_1 %>% filter(transient == "Yes") 
+
+clean_data_1$death_date <- mdy(clean_data_1$death_date)
+
+write_xlsx(clean_data_1,"/Users/julietterihl/Documents/Data/Data_Arizona_Republic/transient_deaths_joined_cleaned.xlsx")
+
+write_xlsx(transient_deaths_total,"/Users/julietterihl/Documents/Data/Data_Arizona_Republic/transient_deaths_total_cass.xlsx")
+```
+
+## Glimpse
+
+```{r}
+glimpse(clean_data_1)
+```
+
+There were 794 rows, or deaths.
+
+## Manner of death
+
+```{r}
+clean_data_1 %>% count(manner_of_death) %>% 
+  arrange(desc(n))
+```
+
+The majority of deaths of people experiencing homelessness in 2022 were ruled an accident. 570/794= 72%
+
+## False positives
+
+```{r}
+# Here I'm filtering the event description for indicators that the person might not have been experiencing homelessness at their time of death, even though they were marked as "transient."
+
+clean_data_1 %>% filter(
+  str_detect(event_description,
+    "her bed| his bed| their bed| her residence| his residence| their residence"
+    )
+) %>% 
+  select (case_number, event_description)
+```
+
+Inquiring to medical examiner's office about case numbers 04665, 11599, 07430, 11087 and 12321 as the descriptions indicate they might not have been homeless.
+
+## Places
+
+```{r}
+clean_data_1 %>% count(death_place_type) %>% 
+  arrange(desc(n))
+```
+
+Hospital was the setting with the highest number of deaths, at 255.
+
+## ZIP codes
+
+```{r}
+clean_data_1 %>% count(death_zip_code) %>% 
+  arrange(desc(n))
+
+```
+
+The five ZIP codes with the most deaths in 2022 were 85006, 85007, 85013, 85008 and 85009.
+
+```{r}
+clean_data_1 %>% filter(death_zip_code == "85006") %>% 
+  count(death_place_type) %>% 
+   arrange(desc(n))
+```
+
+The majority of deaths in ZIP code 85006 were at a hospital.
+
+```{r}
+clean_data_1 %>% filter(death_zip_code == "85007") %>% 
+  count(death_place_type) %>% 
+   arrange(desc(n))
+```
+
+The sidewalk was where most deaths in 85007 occurred.
+
+```{r}
+clean_data_1 %>% filter(death_zip_code == "85013") %>% 
+  count(death_place_type) %>% 
+ arrange(desc(n))
+```
+
+Hospital was also the most common place of death for 85013.
+
+```{r}
+clean_data_1 %>% filter(death_zip_code == "85008") %>% 
+  count(death_place_type) %>% 
+  arrange(desc(n))
+```
+
+Hospital was also the most common place of death for 85008.
+
+```{r}
+clean_data_1 %>% filter(death_zip_code == "85009") %>% 
+  count(death_place_type) %>% 
+  arrange(desc(n))
+```
+
+And finally, 85009 saw deaths in businesses, parking lots and the street most often.
+
+Putting the ZIP codes in numerical order, to see which Phoenix ZIP codes don't have any deaths:
+
+```{r}
+clean_data_1 %>% filter(death_place_city == "PHOENIX") %>% count(death_zip_code)
+```
+
+According to Phoenix.org, ZIP codes 85028, 85045, 85048, 85050, 85083 are also in Phoenix but were not included in the data.
+
+ZIP codes 85036, 85086 were included in the data and are not listed on Phoenix.org's site.
+
+This website might not be the most reliable for ZIP code data, and I would use more official data if I were doing a deeper analysis. But since all I want to say is that "almost every ZIP code in Phoenix is represented," this is sufficient.
+
+## Inside or outside
+
+```{r}
+# Making a column for whether the death occurred inside or outside.
+
+clean_data_1 <- clean_data_1 %>% mutate(
+  inside_or_outside = case_when
+  (
+    death_place_type %in% c(
+      "Hospital",
+      "Care Facility/Medical Provider",
+      "Business",
+      "Hotel/Motel",
+      "Residence",
+      "Temporary/Part-Time Residence",
+      "Storage Shed",
+      "Garage",
+      "Prison/Jail",
+      "Church",
+      "School"
+    ) ~ "inside",
+    death_place_type %in% c(
+      "Sidewalk",
+      "Parking Lot",
+      "Street",
+      "Alley",
+      "Desert Area",
+      "Park",
+      "Field",
+      "Canal",
+      "Highway",
+      "Railroad",
+      "Lake",
+      "River",
+      "Mountain Area",
+      "Dumpster",
+      "Yard",
+      "Driveway",
+      "Porch/Patio",
+      "Trail",
+      "Pool",
+      "Municipal/Government Property"
+    ) ~ "outside",
+    TRUE ~ "other")
+) 
+    
+```
+
+```{r}
+# Checking to see if there are any "other" rows in the inside or outside column.
+
+clean_data_1 %>% filter(inside_or_outside == "other") %>% 
+  select(case_number, death_place_type, inside_or_outside)
+
+```
+
+There are 10 rows that don't have enough information to say whether the death occured inside or outside, so I labeled them "other."
+
+```{r}
+clean_data_1 %>% count(inside_or_outside)
+
+```
+
+About 44% of the deaths occurred outside. It might be slightly more or less because of the 10 we aren't sure about.
+
+```{r}
+clean_data_1 %>% filter(death_place_type == "Dumpster") %>% 
+  select(case_number, death_place_type, event_description)
+```
+
+
+## Municipalities
+
+```{r}
+clean_data_1 %>% count(death_place_city) %>% 
+  arrange(desc(n))
+```
+
+```{r}
+clean_data_1 %>% filter(death_place_city == "MARICOPA") %>% 
+  select(name_last, name_first, death_zip_code)
+```
+
+There are 21 rows that are marked "Maricopa" but are likely in another municipality in Maricopa County, as the city of Maricopa isn't in the county (it's in Pinal County).
+
+## Race, ethnicity
+
+```{r}
+clean_data_1 %>% count(race) %>% 
+  arrange(desc(n))
+```
+
+White people made up 75% of deaths, followed by Black people with 12%, Native Americans with 11%, and Asians with less than 1%.
+
+```{r}
+clean_data_1 %>% count(ethnicity) %>% 
+  arrange(desc(n))
+```
+
+Hispanic/Latino people made up 19% of deaths.
+
+```{r}
+clean_data_1 %>% group_by(race) %>% 
+  count(ethnicity) %>% 
+  arrange(desc(n))
+```
+
+```{r}
+clean_data_1 %>% count(sex_final) %>%
+arrange(desc(n))
+```
+
+Men made up 81% of deaths, women 19%.
+
+## Demographics of homicide victims
+
+```{r}
+clean_data_1 %>% filter(manner_of_death == "Homicide") %>% 
+  count(race) %>% 
+  arrange(desc(n))
+```
+
+Whites made up 83% of homicide victims, followed by Blacks at 11%, Native Americans at 3% and Pacific Islanders at 1%.
+
+## Time of year
+
+Deadliest day of the year:
+
+```{r}
+clean_data_1 %>% count(death_date) %>% 
+  arrange(desc(n))
+```
+
+Deadliest month of the year:
+
+```{r}
+clean_data_1 %>% count(month = lubridate::floor_date(death_date, 'month')) %>% 
+  arrange(desc(n))
+```
+
+July was the deadliest month by far, with more than twice as many deaths as any other month. The second deadliest months were August and June.
+
+```{r}
+death_date<-as.Date(clean_data_1$death_date)
+
+class(clean_data_1$death_date)
+```
+
+```{r}
+clean_data_1[,"month"] <- format(clean_data_1[,"death_date"],"%m")
+```
+
+
+```{r}
+clean_data_1 %>% filter(month=="07")
+```
+
+```{r}
+clean_data_1[is.na(clean_data_1$death_date),]
+```
+
+There are 61 cases where the date of death was left blank. Some have dates included in the event description, but not all.
+
+Deadliest week of the year:
+
+```{r}
+
+clean_data_1 <- clean_data_1 %>% mutate(
+  death_week = (lubridate::week(ymd(death_date)))
+  )
+
+clean_data_1 %>% count(death_week) %>% 
+  arrange(desc(n))
+```
+
+The 29th week of the year was the deadliest week.
+
+```{r}
+clean_data_1 %>% filter(death_week == 29) %>% 
+  select(death_date, primary_cause_of_death, event_description)
+```
+
+## Primary cause of death
+
+Substance use:
+
+```{r}
+
+clean_data_1 %>% filter(
+  str_detect(
+    primary_cause_of_death,
+    "(?i)cocaine|(?i)methamphetamine|(?i)fentanyl|(?i)heroin|(?i)drug|(?i)drugs|(?i)substance|(?i)ethanol|(?i)ethanolism|(?i)alcohol|(?i)toxicity|(?i)intoxication|(?i)doxylamine|(?i)toxic"
+  )
+) %>%
+  select(case_number, manner_of_death, primary_cause_of_death, event_description)
+```
+
+[TRY TO CHECK FOR MISSPELLINGS OF DRUG NAMES]{.highlight}
+
+Fentanyl, specifically:
+
+```{r}
+clean_data_1 %>% filter(
+  str_detect(
+    primary_cause_of_death,
+    "(?i)fentanyl"
+  )
+) %>%
+  select(case_number, primary_cause_of_death, event_description)
+```
+
+279 deaths had fentanyl included in the primary cause.
+
+Heat:
+
+```{r}
+clean_data_1 %>% filter(str_detect(primary_cause_of_death, "(?i)heat|(?i)hyperthermia")) %>% 
+  select(case_number, manner_of_death, death_date, primary_cause_of_death, event_description)
+```
+
+Heat as primary OR secondary cause of death:
+
+```{r}
+clean_data_1 %>% filter(str_detect(primary_cause_of_death, "(?i)heat|(?i)hyperthermia")|str_detect(contributory_cause_of_death,"(?i)heat|(?i)hyperthermia")) %>% 
+  select(case_number, manner_of_death, death_date, primary_cause_of_death, contributory_cause_of_death, event_description)
+```
+
+
+Heat AND drug use:
+
+```{r}
+drug_words <- c("cocaine","Cocaine","methamphetamine","Methamphetamine","fentanyl","Fentanyl","heroin","Heroin","drug","Drug","drugs","Drugs","substance","Substance","ethanol","Ethanol","ethanolism","Ethanolism","alcohol","Alcohol","toxicity","Toxicity","intoxication","Intoxication","doxylamine","Doxylamine","toxic","Toxic")
+
+heat_words <- c("heat","hyperthermia","Heat","Hyperthermia")
+
+heat_and_drug <-clean_data_1 %>% 
+  mutate(heat_drug_combined=ifelse(str_detect(primary_cause_of_death,str_c(drug_words,collapse="|"))&str_detect(contributory_cause_of_death, str_c(heat_words,collapse="|")), "YES",ifelse(str_detect(primary_cause_of_death,str_c(heat_words,collapse="|"))&str_detect(contributory_cause_of_death, str_c(drug_words,collapse="|")),"YES","NO")),.after=contributory_cause_of_death)
+    
+heat_and_drug %>% filter(heat_drug_combined == "YES") %>% 
+  select(case_number,primary_cause_of_death,contributory_cause_of_death,heat_drug_combined) %>% nrow()
+
+```
+At least 92 deaths of people experiencing homelessness were due to drugs and heat combined. That's almost certainly an undercount, as the Medical Examiner's annual report for 2022 included 132 deaths of unhoused people from drugs and heat. I can also see there are some drug/heat deaths that include both of the keywords in just the primary cause of death column, so they weren't captured in this query. So this number shouldn't be considered comprehensive.
+
+
+By month:
+
+```{r}
+clean_data_1 %>% filter(str_detect(primary_cause_of_death, "(?i)heat|(?i)hyperthermia")) %>% 
+  count(month = lubridate::floor_date(death_date, 'month')) %>% 
+  arrange(desc(n))
+```
+
+July had the most heat deaths by far, followed by June and then August.
+
+COVID-19:
+
+```{r}
+clean_data_1 %>% filter(str_detect(primary_cause_of_death, "(?i)covid|(?i)COVID-19")) %>% 
+  select(case_number, manner_of_death, primary_cause_of_death)
+```
+
+Blunt force trauma:
+
+```{r}
+clean_data_1 %>% filter(str_detect(primary_cause_of_death,"(?i)blunt force|(?i)blunt")) %>% 
+  select(case_number, manner_of_death, primary_cause_of_death, event_description, death_zip_code)
+```
+
+Struck by vehicle, train or light rail:
+
+```{r}
+clean_data_1 %>% filter(str_detect(event_description, "(?i)struck")) %>% 
+  select(case_number, manner_of_death, primary_cause_of_death, event_description)
+```
+
+I checked all 54 of these cases manually to make sure the event description said they were struck by a vehicle, which they all were.
+
+I will also include eight more cases from the section above that did not include the word "struck" but are blunt force trauma cases from getting hit by a vehicle: 2022-02106, 2022-03423, 2022-03439, 2022-04059, 2022-06500, 2022-08073, 2022-09696 and 2022-0998.
+
+Totaling those together, there are at least 62 cases of people experiencing homelessness fatally being struck by a vehicle.
+
+```{r}
+# Look at zip codes with the most vehicle deaths.
+
+clean_data_1 %>% filter((str_detect(event_description, "(?i)struck")) |
+                          case_number == "2022-02106" |
+                          case_number == "2022-03423" |
+                          case_number == "2022-03439" |
+                          case_number == "2022-04059" |
+                          case_number ==  "2022-05318" |
+                          case_number ==  "2022-06312" |
+                          case_number ==  "2022-06500" |
+                          case_number ==  "2022-08073" |
+                          case_number == "2022-09696" |
+                          case_number ==  "2022-09922" |
+                          case_number ==  "2022-09982"
+) %>% 
+  filter(case_number != "2022-08787" &
+         case_number != "2022-10791") %>% 
+  count(death_zip_code) %>% 
+  arrange(desc(n))
+                          
+```
+
+ZIP code 85007, the ZIP code of "The Zone," Phoenix's largest homeless encampment, has no vehicle deaths. It could be because the people hit by cars there were taken to a hospital in another ZIP code where they were pronounced dead, such as 85006.
+
+```{r}
+# Double-checking causes of death in 85007 and 85006
+
+clean_data_1 %>% filter(death_zip_code == "85007" | death_zip_code=="85006") %>% 
+                select(death_zip_code, primary_cause_of_death, event_description)
+
+```
+
+## Age at death
+
+```{r}
+mean(clean_data_1$age)
+```
+
+```{r}
+median(clean_data_1$age)
+```
+
+The typical age at time of death was 47 years old.
