@@ -173,9 +173,13 @@ pre code {
 
 <div id="introduction" class="section level2">
 <h2>Introduction</h2>
-<p>This data analysis, on deaths of people experiencing homelessness in Maricopa County in 2023, was completed for an Appeal story on homicides of unhoused people.</p>
-<p>The data was obtained from Jessie Caraveo, PIO for the Maricopa County Office of the Medical Examiner, by email on April 5, 2024. It came in four spreadsheets: transient deaths with event description through 11/17/2023; transient deaths without event description through 11/17/2023; declined ME cases from 9/1/2023 to 2/29/2024; and complete cases from 9/1/2023 to 2/29/2024.</p>
+<p>This Markdown sets out to determine the number of homicides of people experiencing homelessness in Maricopa County, Arizona in 2023. The data analysis was completed for an Appeal story that is set to publish soon.</p>
+<p>The original data includes deaths of people who were either unhoused (i.e. “transient”), or whose housing status was unknown, that were investigated by the Maricopa County Office of the Medical Examiner. It was obtained from Jessie Caraveo, PIO for the Maricopa County Office of the Medical Examiner, by email on April 5, 2024. It came in four spreadsheets: transient deaths with event description through 11/17/2023; transient deaths without event description through 11/17/2023; declined ME cases from 9/1/2023 to 2/29/2024; and complete cases from 9/1/2023 to 2/29/2024.</p>
 <p>Since this story is focused on homicides, and the declined cases file does not state whether or not those cases were homicides, I chose to leave those cases out of this analysis.</p>
+</div>
+<div id="findings" class="section level2">
+<h2>Findings</h2>
+<p>There were 25 unhoused homicide victims in Maricopa County in 2023, and another 54 homicide victims whose housing status is unknown. There were a total of 283 homicide victims in the county that year, according to the <a href="https://azcrimestatistics.azdps.gov/public/View/dispview.aspx">Arizona Department of Public Safety’s crime statistics</a>. That means at least 9% of Maricopa County’s homicide victims in 2023 were unhoused — and possibly even more.</p>
 </div>
 <div id="reading-in-cleaning-the-data" class="section level2">
 <h2>Reading in &amp; cleaning the data</h2>
@@ -273,6 +277,13 @@ colnames(transient_deaths_2_24_edit) &lt;- c(&#39;case_number&#39;,&#39;decedent
 
 transient_deaths_2_24_edit &lt;- transient_deaths_2_24_edit %&gt;% add_column(case_status=&quot;NA&quot;, death_place_city=&quot;NA&quot;)
 
+# Filtering out all of the 2024 dates and the dates between Sept. 1 and Nov. 17, 2023, since we don&#39;t want 2024 data and we&#39;ve already accounted for September-mid-November in the other two datasets.
+
+transient_deaths_2_24_edit &lt;- filter(transient_deaths_2_24_edit, death_date &lt;= &quot;2023-12-31&quot;) 
+
+
+transient_deaths_2_24_edit &lt;- filter(transient_deaths_2_24_edit, death_date &gt;= &quot;2023-11-18&quot;)
+
 # Adding a column to the 11/23 total dataset so it matches with the 2/24 dataset.
 
 deaths_11_23_total &lt;- deaths_11_23_total %&gt;% add_column(cause_and_contributory_cause_of_death=&quot;NA&quot;)
@@ -281,19 +292,15 @@ deaths_11_23_total &lt;- deaths_11_23_total %&gt;% add_column(cause_and_contribu
 
 deaths_2023_total &lt;- rbind(deaths_11_23_total,transient_deaths_2_24_edit)
 
-# Filtering out 2024 data so it&#39;s 2023 only.
-
-deaths_2023_total &lt;- filter(deaths_2023_total, death_date &lt;= &quot;2023-12-31&quot;)
-
-# Checking for duplicates in the data, since we combined two overlapping datasets (between September and mid-November.)
+# Checking for duplicates in the data.
 
 deaths_2023_total %&gt;% distinct(case_number) %&gt;% 
   count()</code></pre>
 <pre><code>## # A tibble: 1 × 1
 ##       n
 ##   &lt;int&gt;
-## 1  1351</code></pre>
-<pre class="r"><code># Looks like there are some duplicates. There are only 1,351 rows with unique case numbers, but 1487 rows total. Let&#39;s remove the duplicate rows, keeping only the first entry for the rows with the same case numbers.
+## 1  1309</code></pre>
+<pre class="r"><code># Looks like we got rid of all the duplicates. There are 1309 rows with distinct case numbers, and 1309 rows total.
 
 deaths_2023_total &lt;- distinct(deaths_2023_total, case_number, .keep_all = TRUE)</code></pre>
 </div>
@@ -302,7 +309,7 @@ deaths_2023_total &lt;- distinct(deaths_2023_total, case_number, .keep_all = TRU
 <pre class="r"><code>#Deaths of people who were confirmed homeless.
 
 deaths_2023_total %&gt;% filter(transient == &quot;Yes&quot;)</code></pre>
-<pre><code>## # A tibble: 830 × 16
+<pre><code>## # A tibble: 806 × 16
 ##    case_number decedent_name  age   sex    case_status ethnicity race  transient
 ##    &lt;chr&gt;       &lt;chr&gt;          &lt;chr&gt; &lt;chr&gt;  &lt;chr&gt;       &lt;chr&gt;     &lt;chr&gt; &lt;chr&gt;    
 ##  1 2023-00046  Bollinger-Gon… 59.0  Male   Closed      Hispanic… White Yes      
@@ -315,13 +322,13 @@ deaths_2023_total %&gt;% filter(transient == &quot;Yes&quot;)</code></pre>
 ##  8 2023-00149  Yazzie, Charl… 54.0  Male   Closed      Not Hisp… Amer… Yes      
 ##  9 2023-00154  LaRue, Don     60.0  Male   Closed      Not Hisp… Blac… Yes      
 ## 10 2023-00181  Huffman, Jimmy 61.0  Male   Closed      Hispanic… White Yes      
-## # … with 820 more rows, and 8 more variables: death_date &lt;dttm&gt;,
+## # … with 796 more rows, and 8 more variables: death_date &lt;dttm&gt;,
 ## #   sub_manner &lt;chr&gt;, manner &lt;chr&gt;, death_zip_code &lt;chr&gt;,
 ## #   death_place_city &lt;chr&gt;, death_place_type &lt;chr&gt;, event_description &lt;chr&gt;,
 ## #   cause_and_contributory_cause_of_death &lt;chr&gt;</code></pre>
-<p>830 people who were confirmed homeless died in Maricopa County in 2023, more than 2022, which was 794.</p>
+<p>806 people who were confirmed homeless died in Maricopa County in 2023, more than 2022, which was 794.</p>
 <pre class="r"><code>deaths_2023_total %&gt;% filter(manner == &quot;Homicide&quot;)</code></pre>
-<pre><code>## # A tibble: 80 × 16
+<pre><code>## # A tibble: 79 × 16
 ##    case_number decedent_name  age   sex   case_status ethnicity  race  transient
 ##    &lt;chr&gt;       &lt;chr&gt;          &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;       &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;    
 ##  1 2023-00079  Medina-Nunez,… 46.0  Male  Closed      Not Hispa… White Unknown  
@@ -334,14 +341,14 @@ deaths_2023_total %&gt;% filter(transient == &quot;Yes&quot;)</code></pre>
 ##  8 2023-02890  Morrissey, Al… 26.0  Male  Closed      Hispanic … White Yes      
 ##  9 2023-03034  Rugwiro, Geof… 47.0  Male  Closed      &lt;NA&gt;       Blac… Unknown  
 ## 10 2023-03321  Ring Jr., Ric… 38.0  Male  Closed      Not Hispa… White Unknown  
-## # … with 70 more rows, and 8 more variables: death_date &lt;dttm&gt;,
+## # … with 69 more rows, and 8 more variables: death_date &lt;dttm&gt;,
 ## #   sub_manner &lt;chr&gt;, manner &lt;chr&gt;, death_zip_code &lt;chr&gt;,
 ## #   death_place_city &lt;chr&gt;, death_place_type &lt;chr&gt;, event_description &lt;chr&gt;,
 ## #   cause_and_contributory_cause_of_death &lt;chr&gt;</code></pre>
-<p>There were 80 homicides.</p>
+<p>There were 79 homicides.</p>
 <pre class="r"><code>deaths_2023_total %&gt;% filter(manner == &quot;Homicide&quot;) %&gt;% 
   filter (transient == &quot;Yes&quot;)</code></pre>
-<pre><code>## # A tibble: 26 × 16
+<pre><code>## # A tibble: 25 × 16
 ##    case_number decedent_name  age   sex   case_status ethnicity  race  transient
 ##    &lt;chr&gt;       &lt;chr&gt;          &lt;chr&gt; &lt;chr&gt; &lt;chr&gt;       &lt;chr&gt;      &lt;chr&gt; &lt;chr&gt;    
 ##  1 2023-01336  Johnson, Marq… 24.0  Male  Closed      Not Hispa… Blac… Yes      
@@ -354,12 +361,12 @@ deaths_2023_total %&gt;% filter(transient == &quot;Yes&quot;)</code></pre>
 ##  8 2023-05468  Young, Stephe… 41.0  Male  Closed      Not Hispa… White Yes      
 ##  9 2023-09515  Blevins, Lavo… 35.0  Male  Closed      Not Hispa… Blac… Yes      
 ## 10 2023-01211  Brown, Sylves… 31.0  Male  Closed      Not Hispa… Blac… Yes      
-## # … with 16 more rows, and 8 more variables: death_date &lt;dttm&gt;,
+## # … with 15 more rows, and 8 more variables: death_date &lt;dttm&gt;,
 ## #   sub_manner &lt;chr&gt;, manner &lt;chr&gt;, death_zip_code &lt;chr&gt;,
 ## #   death_place_city &lt;chr&gt;, death_place_type &lt;chr&gt;, event_description &lt;chr&gt;,
 ## #   cause_and_contributory_cause_of_death &lt;chr&gt;</code></pre>
-<p>26 of the 80 homicides were of people who were confirmed to be homeless. There were a total of 283 homicides in the county that year, according to the <a href="https://azcrimestatistics.azdps.gov/public/View/dispview.aspx">Arizona Department of Public Safety’s crime statistics</a>.</p>
-<p>This will be our universe of cases, since in the other 54 cases, it was not confirmed whether or not the victim was actually homeless. That being said, we should include that detail prominently in the story, as it means the 26 number is likely an undercount.</p>
+<p>25 of the 79 homicides were of people who were confirmed to be homeless. There were a total of 283 homicides in the county that year, according to the <a href="https://azcrimestatistics.azdps.gov/public/View/dispview.aspx">Arizona Department of Public Safety’s crime statistics</a>.</p>
+<p>This will be our universe of cases, since in the other 54 cases, it was not confirmed whether or not the victim was actually homeless. That being said, we should include that detail prominently in the story, as it means the 25 number is likely an undercount.</p>
 <pre class="r"><code># Export homicide info to Excel file
 
 homicide_data &lt;- deaths_2023_total %&gt;% filter(manner == &quot;Homicide&quot;) %&gt;% 
